@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "unistd.h": "c",
+        "mqueue.h": "c",
+        "time.h": "c",
+        "string.h": "c",
+        "endian.h": "c",
+        "stdlib.h": "c"
+    }
+}

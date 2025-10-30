@@ -1,0 +1,103 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "mkdir -p buildexe && if [ \"${fileExtname}\" = \".c\" ]; then echo \"gcc -g '${file}' -o './buildexe/${fileBasenameNoExtension}'\" && gcc -g '${file}' -o './buildexe/${fileBasenameNoExtension}'; else echo \"g++ -g '${file}' -o './buildexe/${fileBasenameNoExtension}'\" && g++ -g '${file}' -o './buildexe/${fileBasenameNoExtension}'; fi"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": false,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "run",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "'${workspaceFolder}/buildexe/${fileBasenameNoExtension}' && read -p '按任意键继续...'"
+            ],
+            "dependsOn": [
+                "build"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": false
+            }
+        },
+        {
+            "label": "run-external",
+            "type": "shell",
+            "command": "gnome-terminal",
+            "args": [
+                "--",
+                "bash",
+                "-c",
+                "cd '${workspaceFolder}' && './buildexe/${fileBasenameNoExtension}' && read -n1 -p '按任意键继续...'"
+            ],
+            "dependsOn": [
+                "build"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "presentation": {
+                "echo": false,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "compile-c",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "mkdir -p buildexe && gcc -g '${file}' -o './buildexe/${fileBasenameNoExtension}'"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "compile-cpp",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "mkdir -p buildexe && g++ -g '${file}' -o './buildexe/${fileBasenameNoExtension}'"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        }
+    ]
+}
