@@ -97,6 +97,8 @@ int main(int argc, char const *argv[])
     handle_error("listen", tempResult);
 
     //等待客户端连接
+    //在调用 accept(fd, (struct sockaddr*)&client_addr, &client_addr_len) 前，client_addr_len 必须包含缓冲区的大小；
+    //accept 返回后，client_addr_len 会被修改为实际写入的地址长度。
     socklen_t client_addr_len = sizeof(client_addr);
     //功能：从已完成连接队列中取出一个客户端连接，并返回一个新的套接字描述符，专门用于与该客户端通信。
     //accept() 是阻塞函数（默认情况下），会一直等待直到有客户端连接。
