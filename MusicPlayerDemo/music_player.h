@@ -38,6 +38,36 @@ typedef struct
     int is_end; // 0 - 未结束, 1 - 已结束
 } audio_buffer_t;
 
+// 播放器上下文
+typedef struct {
+    char current_file[512];              // 当前播放文件
+    player_state_t state;                // 播放状态
 
+    pthread_t decode_tid;                // 解码线程ID
+    pthread_t output_tid;                // 输出线程ID
+
+    pthread_cond_t pause_cond;           // 暂停条件变量
+    pthread_mutex_t state_mutex;         // 状态锁
+
+    audio_buffer_t buffer;               // 共享缓冲区
+} player_context_t;
+
+// 缓冲区操作函数
+void buffer_init(audio_buffer_t *buf);
+void buffer_destroy(audio_buffer_t *buf);
+int buffer_write(audio_buffer_t *buf, const char *data, int size);
+int buffer_read(audio_buffer_t *buf, char *data, int size);
+
+// 播放器操作函数
+void player_init(player_context_t *ctx);
+void player_cleanup(player_context_t *ctx);
+int player_start(player_context_t *ctx, const char *filepath);
+void player_stop(player_context_t *ctx);
+void player_pause(player_context_t *ctx);
+void player_resume(player_context_t *ctx);
+
+// 线程函数
+void *decode_thread(void *arg);
+void *output_thread(void *arg);
 
 #endif

@@ -1,7 +1,7 @@
 #include "music_manager.h"
 #include <stdio.h>
 #include <string.h>
-#include <dirent.h>
+#include <dirent.h> // For directory operations
 
 // 判断是否是音频文件
 int is_audio_file(const char *filename) {

@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "music_manager.h": "c",
+    "player.h": "c",
+    "music_player.h": "c"
+  }
+}
