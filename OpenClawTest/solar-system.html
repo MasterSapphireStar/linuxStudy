@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>交互式3D太阳系可视化</title>
+    <title>交互式 3D 太阳系探索器</title>
     <style>
         * {
             margin: 0;
@@ -216,34 +216,35 @@
 <body>
     <div id="loading">
         <div id="loading-spinner"></div>
-        <div>加载3D太阳系中...</div>
+        <div>正在构建 3D 太阳系场景...</div>
     </div>
     
-    <div id="title">🌌 交互式3D太阳系</div>
+    <div id="title">🌌 交互式 3D 太阳系探索器</div>
     
     <div id="legend">
-        <h4>📖 操作指南</h4>
-        <p><span class="key">🖱️ 左键拖拽</span> 旋转视角</p>
-        <p><span class="key">🔄 滚轮</span> 缩放视角</p>
-        <p><span class="key">➡️ 右键拖拽</span> 平移视角</p>
-        <p><span class="key">👆 点击行星</span> 查看详情</p>
+        <h4>📖 交互提示</h4>
+        <p><span class="key">🖱️ 左键拖拽</span> 旋转观察视角</p>
+        <p><span class="key">🔄 鼠标滚轮</span> 缩放远近</p>
+        <p><span class="key">➡️ 右键拖拽</span> 平移场景</p>
+        <p><span class="key">👆 点击行星</span> 打开信息卡片</p>
     </div>
     
     <div id="canvas-container"></div>
     
     <div id="controls">
-        <button id="pause-btn">⏸️ 暂停公转</button>
+        <button id="pause-btn">⏸️ 暂停动画</button>
         <button id="orbit-btn">👁️ 隐藏轨道</button>
-        <button id="reset-btn">🎯 重置视角</button>
+        <button id="reset-btn">🎯 恢复默认视角</button>
     </div>
     
     <div id="info-panel">
         <button class="close-btn" onclick="closeInfoPanel()">×</button>
         <h3 id="planet-name">行星名称</h3>
         <p><span class="label">直径：</span><span class="value" id="planet-diameter">-</span></p>
-        <p><span class="label">轨道周期：</span><span class="value" id="planet-orbit">-</span></p>
+        <p><span class="label">公转周期：</span><span class="value" id="planet-orbit">-</span></p>
         <p><span class="label">与太阳距离：</span><span class="value" id="planet-distance">-</span></p>
         <p><span class="label">自转周期：</span><span class="value" id="planet-rotation">-</span></p>
+        <p><span class="label">说明：</span><span class="value" id="planet-note">点击空白处可关闭卡片</span></p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -488,7 +489,7 @@
                 undefined,
                 undefined,
                 (error) => {
-                    console.warn('太阳纹理加载失败，使用默认材质');
+                    console.warn('太阳纹理加载失败，已自动回退到默认材质');
                 }
             );
             
@@ -535,7 +536,7 @@
                     undefined,
                     undefined,
                     (error) => {
-                        console.warn(`${planetData.name}纹理加载失败，使用默认颜色`);
+                        console.warn(`${planetData.name} 纹理加载失败，已自动回退到默认颜色材质`);
                     }
                 );
                 
@@ -741,6 +742,7 @@
             document.getElementById('planet-orbit').textContent = `${planetData.orbitPeriod} 地球日`;
             document.getElementById('planet-distance').textContent = `${planetData.distance} AU (简化)`;
             document.getElementById('planet-rotation').textContent = planetData.rotationPeriod;
+            document.getElementById('planet-note').textContent = '点击空白处可关闭信息卡片';
             
             document.getElementById('info-panel').classList.add('show');
         }
@@ -778,7 +780,7 @@
         function togglePause() {
             isPaused = !isPaused;
             const btn = document.getElementById('pause-btn');
-            btn.textContent = isPaused ? '▶️ 继续公转' : '⏸️ 暂停公转';
+            btn.textContent = isPaused ? '▶️ 继续动画' : '⏸️ 暂停动画';
         }
 
         // =============================================
@@ -828,7 +830,13 @@
             } catch (error) {
                 console.error('初始化失败:', error);
                 const loadingElement = document.getElementById('loading');
-                loadingElement.innerHTML = `<div style="color: #ff4444;">加载失败，请刷新页面重试</div>`;
+                loadingElement.innerHTML = `
+                    <div style="color: #ff4444; font-size: 28px; margin-bottom: 12px;">⚠️ 场景初始化失败</div>
+                    <div style="color: #ddd; font-size: 15px; line-height: 1.7; text-align: center; max-width: 420px;">
+                        请刷新页面后重试。<br>
+                        如果仍然失败，建议通过本地静态服务器打开页面，而不是直接双击 HTML 文件。
+                    </div>
+                `;
             }
         }
 
