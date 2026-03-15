@@ -46,10 +46,30 @@
         .instructions {
             margin-top: 15px;
             padding: 15px 25px;
-            background: rgba(255,255,255,0.8);
-            border-radius: 10px;
+            background: rgba(255,255,255,0.82);
+            border-radius: 14px;
             color: #2c3e50;
             text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .status-panel {
+            margin-top: 12px;
+            padding: 12px 18px;
+            min-height: 52px;
+            background: rgba(44, 62, 80, 0.88);
+            color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+            text-align: center;
+            line-height: 1.6;
+            max-width: 900px;
+        }
+
+        .status-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #f8e16c;
         }
         
         .btn {
@@ -79,8 +99,12 @@
     </div>
     <canvas id="gameCanvas" width="900" height="500"></canvas>
     <div class="instructions">
-        <p>拖动小鸟向后拉动弹弓，松开发射！消灭所有绿猪获胜！</p>
+        <p>拖动小鸟向后拉动弹弓，松开发射！消灭所有绿猪即可过关。</p>
         <button class="btn" onclick="resetGame()">重新开始</button>
+    </div>
+    <div class="status-panel">
+        <div class="status-title" id="statusTitle">准备发射</div>
+        <div id="statusText">拖动红色小鸟，调整角度和力度后松手发射。</div>
     </div>
 
     <script>
@@ -94,6 +118,7 @@
         let score = 0;
         let birdsLeft = 5;
         let gameState = 'aiming';
+        let roundResolved = false;
         
         const slingshot = {
             x: 120,
@@ -117,10 +142,16 @@
         let blocks = [];
         let particles = [];
         
+        function setStatus(title, text) {
+            document.getElementById('statusTitle').textContent = title;
+            document.getElementById('statusText').textContent = text;
+        }
+
         function initGame() {
             targets = [];
             blocks = [];
             particles = [];
+            roundResolved = false;
             
             const targetPositions = [
                 { x: 650, y: GROUND_Y - 25 },
@@ -157,6 +188,8 @@
             bird.isDragging = false;
             bird.isLaunched = false;
             gameState = 'aiming';
+            roundResolved = false;
+            setStatus('准备发射', '拖动红色小鸟，调整角度和力度后松手发射。');
         }
         
         function resetGame() {
@@ -339,6 +372,31 @@
             }
         }
         
+        function resolveRound() {
+            if (roundResolved) return;
+            roundResolved = true;
+
+            const remainingTargets = targets.filter(t => t.health > 0).length;
+            if (remainingTargets === 0) {
+                gameState = 'won';
+                setStatus('挑战成功', `你消灭了全部绿猪，最终得分 ${score} 分！点击“重新开始”可再次挑战。`);
+                bird.isLaunched = false;
+                return;
+            }
+
+            birdsLeft--;
+            document.getElementById('birds').textContent = birdsLeft;
+
+            if (birdsLeft > 0) {
+                setStatus('继续尝试', `还有 ${birdsLeft} 只小鸟，调整角度后继续发射。`);
+                resetBird();
+            } else {
+                gameState = 'lost';
+                setStatus('挑战失败', `小鸟已经用完，当前得分 ${score} 分。点击“重新开始”再试一次吧。`);
+                bird.isLaunched = false;
+            }
+        }
+
         function update() {
             if (bird.isLaunched) {
                 bird.vx *= FRICTION;
@@ -354,25 +412,14 @@
                     
                     if (Math.abs(bird.vy) < 1 && Math.abs(bird.vx) < 1) {
                         setTimeout(() => {
-                            if (targets.filter(t => t.health > 0).length === 0) {
-                                alert('恭喜获胜！总分：' + score);
-                            } else if (birdsLeft > 0) {
-                                birdsLeft--;
-                                document.getElementById('birds').textContent = birdsLeft;
-                                resetBird();
-                            } else {
-                                alert('游戏结束！分数：' + score);
-                            }
+                            resolveRound();
                         }, 500);
                     }
                 }
                 
-                if (bird.x > canvas.width || bird.x < 0) {
-                    birdsLeft--;
-                    document.getElementById('birds').textContent = birdsLeft;
-                    if (birdsLeft > 0) {
-                        resetBird();
-                    }
+                if (bird.x > canvas.width || bird.x < 0 || bird.y < -100) {
+                    setStatus('本次发射结束', '小鸟已经飞出有效区域，准备下一次发射。');
+                    resolveRound();
                 }
                 
                 targets.forEach(target => {
@@ -390,6 +437,7 @@
                             document.getElementById('score').textContent = score;
                             createParticles(target.x, target.y, '#27ae60', 15);
                             updateTargetCount();
+                            setStatus('命中目标', `成功消灭一只绿猪！当前得分 ${score} 分。`);
                         }
                     }
                 });
@@ -408,6 +456,7 @@
                             bird.vx *= -0.5;
                             bird.vy *= -0.5;
                             createParticles(bird.x, bird.y, '#8B4513', 8);
+                            setStatus('击中障碍', '障碍物受到了冲击，可以继续寻找更好的入射角度。');
                         } else {
                             bird.vx *= -0.7;
                             bird.vy *= -0.7;
@@ -430,6 +479,27 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, '#87CEEB');
+            skyGradient.addColorStop(0.65, '#BFE9FF');
+            skyGradient.addColorStop(0.66, '#9CCC65');
+            skyGradient.addColorStop(1, '#558B2F');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.beginPath();
+            ctx.arc(120, 90, 36, 0, Math.PI * 2);
+            ctx.arc(150, 80, 28, 0, Math.PI * 2);
+            ctx.arc(180, 92, 32, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(620, 70, 30, 0, Math.PI * 2);
+            ctx.arc(648, 62, 24, 0, Math.PI * 2);
+            ctx.arc(675, 74, 28, 0, Math.PI * 2);
+            ctx.fill();
+
             ctx.fillStyle = '#7CB342';
             ctx.fillRect(0, GROUND_Y, canvas.width, 50);
             
@@ -446,9 +516,9 @@
             drawParticles();
             drawTrajectory();
             
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.font = '16px Arial';
-            ctx.fillText('拖动小鸟发射', 20, 30);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('拖动小鸟发射，优先瞄准结构薄弱处', 20, 30);
         }
         
         function gameLoop() {
@@ -458,7 +528,7 @@
         }
         
         canvas.addEventListener('mousedown', (e) => {
-            if (bird.isLaunched) return;
+            if (bird.isLaunched || gameState === 'won' || gameState === 'lost') return;
             
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
@@ -471,6 +541,7 @@
             if (dist < bird.radius + 10) {
                 bird.isDragging = true;
                 gameState = 'dragging';
+                setStatus('正在瞄准', '继续拖动即可调整角度与力度，松手发射。');
             }
         });
         
@@ -508,6 +579,8 @@
             
             bird.vx = Math.cos(angle) * power;
             bird.vy = Math.sin(angle) * power;
+            gameState = 'flying';
+            setStatus('飞行中', '观察飞行轨迹和碰撞效果，等待这一轮结算。');
         });
         
         canvas.addEventListener('mouseleave', () => {
@@ -518,6 +591,7 @@
         });
         
         initGame();
+        setStatus('准备发射', '拖动红色小鸟，调整角度和力度后松手发射。');
         gameLoop();
     </script>
 </body>
