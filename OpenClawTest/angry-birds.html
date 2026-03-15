@@ -10,7 +10,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
             min-height: 100vh;
@@ -20,29 +20,33 @@
             font-family: Arial, sans-serif;
             overflow: hidden;
         }
-        
+
         h1 {
             color: #2c3e50;
             margin: 20px 0;
             text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
         }
-        
+
         .info {
             display: flex;
             gap: 30px;
             margin-bottom: 10px;
             font-size: 18px;
             color: #2c3e50;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        
+
         canvas {
             border: 3px solid #2c3e50;
             border-radius: 10px;
             background: linear-gradient(to bottom, #87CEEB 0%, #98D8C8 70%, #7CB342 70%, #558B2F 100%);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             cursor: crosshair;
+            max-width: calc(100vw - 24px);
+            height: auto;
         }
-        
+
         .instructions {
             margin-top: 15px;
             padding: 15px 25px;
@@ -64,6 +68,7 @@
             text-align: center;
             line-height: 1.6;
             max-width: 900px;
+            width: min(900px, calc(100vw - 24px));
         }
 
         .status-title {
@@ -71,7 +76,7 @@
             font-weight: 700;
             color: #f8e16c;
         }
-        
+
         .btn {
             margin-top: 10px;
             padding: 10px 25px;
@@ -83,7 +88,7 @@
             cursor: pointer;
             transition: transform 0.2s, background 0.2s;
         }
-        
+
         .btn:hover {
             background: #c0392b;
             transform: scale(1.05);
@@ -93,14 +98,17 @@
 <body>
     <h1>愤怒的小鸟</h1>
     <div class="info">
-        <span>分数: <strong id="score">0</strong></span>
+        <span>关卡: <strong id="level">1 / 3</strong></span>
+        <span>关卡分: <strong id="score">0</strong></span>
+        <span>总分: <strong id="totalScore">0</strong></span>
         <span>小鸟: <strong id="birds">5</strong></span>
         <span>目标: <strong id="targets">0</strong></span>
     </div>
     <canvas id="gameCanvas" width="900" height="500"></canvas>
     <div class="instructions">
-        <p>拖动小鸟向后拉动弹弓，松开发射！消灭所有绿猪即可过关。</p>
-        <button class="btn" onclick="resetGame()">重新开始</button>
+        <p id="instructionText">拖动小鸟向后拉动弹弓，松开发射！消灭所有绿猪即可过关。</p>
+        <button class="btn" onclick="retryLevel()">重试本关</button>
+        <button class="btn" onclick="resetGame()">从第一关开始</button>
     </div>
     <div class="status-panel">
         <div class="status-title" id="statusTitle">准备发射</div>
@@ -110,23 +118,83 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+
         const GRAVITY = 0.3;
         const FRICTION = 0.99;
         const GROUND_Y = canvas.height - 50;
-        
+
+        const LEVELS = [
+            {
+                id: 1,
+                name: '教学关：击破底座',
+                birds: 5,
+                tip: '优先瞄准底座，让结构失去支撑。',
+                targets: [
+                    { x: 690, y: GROUND_Y - 25 },
+                    { x: 760, y: GROUND_Y - 25 },
+                    { x: 725, y: GROUND_Y - 90 }
+                ],
+                blocks: [
+                    { x: 670, y: GROUND_Y - 55, width: 90, height: 18, health: 2 },
+                    { x: 740, y: GROUND_Y - 55, width: 90, height: 18, health: 2 },
+                    { x: 715, y: GROUND_Y - 120, width: 22, height: 75, health: 2 }
+                ]
+            },
+            {
+                id: 2,
+                name: '进阶关：双塔夹击',
+                birds: 5,
+                tip: '尝试选择更薄弱的一侧，制造连锁倒塌。',
+                targets: [
+                    { x: 660, y: GROUND_Y - 25 },
+                    { x: 745, y: GROUND_Y - 25 },
+                    { x: 820, y: GROUND_Y - 25 },
+                    { x: 745, y: GROUND_Y - 105 }
+                ],
+                blocks: [
+                    { x: 640, y: GROUND_Y - 55, width: 65, height: 18, health: 2 },
+                    { x: 785, y: GROUND_Y - 55, width: 65, height: 18, health: 2 },
+                    { x: 725, y: GROUND_Y - 55, width: 40, height: 18, health: 2 },
+                    { x: 685, y: GROUND_Y - 120, width: 18, height: 80, health: 2 },
+                    { x: 787, y: GROUND_Y - 120, width: 18, height: 80, health: 2 }
+                ]
+            },
+            {
+                id: 3,
+                name: '挑战关：高塔压制',
+                birds: 6,
+                tip: '先破坏承重点，再利用落木压制高处目标。',
+                targets: [
+                    { x: 710, y: GROUND_Y - 25 },
+                    { x: 790, y: GROUND_Y - 25 },
+                    { x: 750, y: GROUND_Y - 100 },
+                    { x: 750, y: GROUND_Y - 165 }
+                ],
+                blocks: [
+                    { x: 690, y: GROUND_Y - 55, width: 120, height: 18, health: 2 },
+                    { x: 720, y: GROUND_Y - 120, width: 18, height: 72, health: 2 },
+                    { x: 780, y: GROUND_Y - 120, width: 18, height: 72, health: 2 },
+                    { x: 730, y: GROUND_Y - 175, width: 60, height: 18, health: 2 },
+                    { x: 748, y: GROUND_Y - 235, width: 18, height: 55, health: 2 }
+                ]
+            }
+        ];
+
         let score = 0;
-        let birdsLeft = 5;
-        let gameState = 'aiming';
+        let totalScore = 0;
+        let currentLevelIndex = 0;
+        let birdsLeft = LEVELS[0].birds;
+        let screenState = 'playing';
+        let turnState = 'ready';
         let roundResolved = false;
-        
+
         const slingshot = {
             x: 120,
             y: GROUND_Y - 80,
             width: 20,
             height: 100
         };
-        
+
         let bird = {
             x: slingshot.x,
             y: slingshot.y,
@@ -137,30 +205,38 @@
             isLaunched: false,
             color: '#e74c3c'
         };
-        
+
         let targets = [];
         let blocks = [];
         let particles = [];
-        
+
         function setStatus(title, text) {
             document.getElementById('statusTitle').textContent = title;
             document.getElementById('statusText').textContent = text;
         }
 
-        function initGame() {
+        function setInstruction(text) {
+            document.getElementById('instructionText').textContent = text;
+        }
+
+        function getCurrentLevel() {
+            return LEVELS[currentLevelIndex];
+        }
+
+        function initGame(levelIndex = currentLevelIndex) {
+            currentLevelIndex = levelIndex;
+            const level = getCurrentLevel();
+
             targets = [];
             blocks = [];
             particles = [];
             roundResolved = false;
-            
-            const targetPositions = [
-                { x: 650, y: GROUND_Y - 25 },
-                { x: 720, y: GROUND_Y - 25 },
-                { x: 750, y: GROUND_Y - 80 },
-                { x: 800, y: GROUND_Y - 25 }
-            ];
-            
-            targetPositions.forEach(pos => {
+            birdsLeft = level.birds;
+            score = 0;
+            screenState = 'playing';
+            turnState = 'ready';
+
+            level.targets.forEach(pos => {
                 targets.push({
                     x: pos.x,
                     y: pos.y,
@@ -169,42 +245,68 @@
                     color: '#27ae60'
                 });
             });
-            
-            blocks.push(
-                { x: 680, y: GROUND_Y - 60, width: 80, height: 20, health: 2 },
-                { x: 770, y: GROUND_Y - 60, width: 80, height: 20, health: 2 },
-                { x: 725, y: GROUND_Y - 120, width: 20, height: 80, health: 2 },
-                { x: 800, y: GROUND_Y - 100, width: 20, height: 60, health: 2 }
-            );
-            
+
+            level.blocks.forEach(block => {
+                blocks.push({
+                    ...block,
+                    vx: 0,
+                    vy: 0,
+                    supported: true
+                });
+            });
+
+            document.getElementById('level').textContent = `${level.id} / ${LEVELS.length}`;
+            document.getElementById('score').textContent = score;
+            document.getElementById('totalScore').textContent = totalScore;
+            document.getElementById('birds').textContent = birdsLeft;
             updateTargetCount();
+            setInstruction(`当前关卡：${level.name}。${level.tip}`);
+            setStatus(`第 ${level.id} 关：${level.name}`, level.tip);
         }
-        
+
         function resetBird() {
+            const level = getCurrentLevel();
             bird.x = slingshot.x;
             bird.y = slingshot.y;
             bird.vx = 0;
             bird.vy = 0;
             bird.isDragging = false;
             bird.isLaunched = false;
-            gameState = 'aiming';
+            turnState = 'ready';
             roundResolved = false;
-            setStatus('准备发射', '拖动红色小鸟，调整角度和力度后松手发射。');
+            setStatus(`第 ${level.id} 关：准备发射`, level.tip);
         }
-        
+
+        function loadNextLevel() {
+            if (currentLevelIndex < LEVELS.length - 1) {
+                currentLevelIndex += 1;
+                initGame(currentLevelIndex);
+                resetBird();
+            } else {
+                screenState = 'gameClear';
+                document.getElementById('totalScore').textContent = totalScore + score;
+                setInstruction('全部关卡已通过，你可以点击按钮重新挑战。');
+                setStatus('全部通关', `太棒了！你已完成全部 ${LEVELS.length} 关，总分 ${totalScore + score} 分。`);
+                bird.isLaunched = false;
+            }
+        }
+
         function resetGame() {
-            score = 0;
-            birdsLeft = 5;
-            document.getElementById('score').textContent = score;
-            document.getElementById('birds').textContent = birdsLeft;
-            initGame();
+            totalScore = 0;
+            currentLevelIndex = 0;
+            initGame(0);
             resetBird();
         }
-        
+
+        function retryLevel() {
+            initGame(currentLevelIndex);
+            resetBird();
+        }
+
         function updateTargetCount() {
             document.getElementById('targets').textContent = targets.filter(t => t.health > 0).length;
         }
-        
+
         function createParticles(x, y, color, count) {
             for (let i = 0; i < count; i++) {
                 particles.push({
@@ -218,16 +320,26 @@
                 });
             }
         }
-        
+
+        function isBlockSupported(block) {
+            if (block.y + block.height >= GROUND_Y - 1) return true;
+            return blocks.some(other => {
+                if (other === block || other.health <= 0) return false;
+                const horizontalOverlap = block.x < other.x + other.width && block.x + block.width > other.x;
+                const verticalContact = Math.abs((block.y + block.height) - other.y) < 6;
+                return horizontalOverlap && verticalContact;
+            });
+        }
+
         function drawSlingshot() {
             ctx.fillStyle = '#8B4513';
             ctx.fillRect(slingshot.x - 15, slingshot.y, 8, 80);
             ctx.fillRect(slingshot.x + 7, slingshot.y, 8, 80);
-            
+
             ctx.fillStyle = '#A0522D';
             ctx.fillRect(slingshot.x - 20, slingshot.y - 10, 40, 10);
         }
-        
+
         function drawBird() {
             ctx.beginPath();
             ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
@@ -236,19 +348,19 @@
             ctx.strokeStyle = '#c0392b';
             ctx.lineWidth = 3;
             ctx.stroke();
-            
+
             ctx.fillStyle = 'white';
             ctx.beginPath();
             ctx.arc(bird.x - 6, bird.y - 5, 6, 0, Math.PI * 2);
             ctx.arc(bird.x + 6, bird.y - 5, 6, 0, Math.PI * 2);
             ctx.fill();
-            
+
             ctx.fillStyle = 'black';
             ctx.beginPath();
             ctx.arc(bird.x - 6, bird.y - 5, 3, 0, Math.PI * 2);
             ctx.arc(bird.x + 6, bird.y - 5, 3, 0, Math.PI * 2);
             ctx.fill();
-            
+
             ctx.fillStyle = '#f39c12';
             ctx.beginPath();
             ctx.moveTo(bird.x + bird.radius, bird.y);
@@ -256,7 +368,7 @@
             ctx.lineTo(bird.x + bird.radius, bird.y - 10);
             ctx.closePath();
             ctx.fill();
-            
+
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -268,11 +380,11 @@
             ctx.lineTo(bird.x + 7, bird.y - bird.radius - 15);
             ctx.stroke();
         }
-        
+
         function drawTargets() {
             targets.forEach(target => {
                 if (target.health <= 0) return;
-                
+
                 ctx.beginPath();
                 ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
                 ctx.fillStyle = target.color;
@@ -280,39 +392,49 @@
                 ctx.strokeStyle = '#1e8449';
                 ctx.lineWidth = 3;
                 ctx.stroke();
-                
+
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.arc(target.x - 8, target.y - 5, 7, 0, Math.PI * 2);
                 ctx.arc(target.x + 8, target.y - 5, 7, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 ctx.fillStyle = 'black';
                 ctx.beginPath();
                 ctx.arc(target.x - 8, target.y - 5, 3, 0, Math.PI * 2);
                 ctx.arc(target.x + 8, target.y - 5, 3, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 ctx.fillStyle = '#f39c12';
                 ctx.beginPath();
                 ctx.ellipse(target.x, target.y + 10, 10, 6, 0, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
-        
+
         function drawBlocks() {
             blocks.forEach(block => {
                 if (block.health <= 0) return;
-                
-                const alpha = block.health / 2;
+
+                const alpha = Math.max(0.35, block.health / 2);
                 ctx.fillStyle = `rgba(139, 69, 19, ${alpha})`;
                 ctx.fillRect(block.x, block.y, block.width, block.height);
                 ctx.strokeStyle = '#5D4037';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(block.x, block.y, block.width, block.height);
+
+                if (block.health === 1) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+                    ctx.beginPath();
+                    ctx.moveTo(block.x + 8, block.y + 4);
+                    ctx.lineTo(block.x + block.width - 10, block.y + block.height - 4);
+                    ctx.moveTo(block.x + block.width * 0.45, block.y + 2);
+                    ctx.lineTo(block.x + block.width * 0.25, block.y + block.height - 2);
+                    ctx.stroke();
+                }
             });
         }
-        
+
         function drawParticles() {
             particles.forEach(p => {
                 ctx.beginPath();
@@ -323,43 +445,42 @@
                 ctx.globalAlpha = 1;
             });
         }
-        
+
         function drawTrajectory() {
             if (!bird.isDragging) return;
-            
+
             const dx = slingshot.x - bird.x;
             const dy = slingshot.y - bird.y;
             const power = Math.sqrt(dx * dx + dy * dy) * 0.15;
             const angle = Math.atan2(dy, dx);
-            
+
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             ctx.beginPath();
-            
+
             let px = bird.x;
             let py = bird.y;
             let pvx = Math.cos(angle) * power;
             let pvy = Math.sin(angle) * power;
-            
+
             ctx.moveTo(px, py);
-            
+
             for (let i = 0; i < 50; i++) {
                 pvx *= FRICTION;
                 pvy *= FRICTION;
                 pvy += GRAVITY;
                 px += pvx;
                 py += pvy;
-                
+
                 if (py > GROUND_Y) break;
-                
                 ctx.lineTo(px, py);
             }
-            
+
             ctx.stroke();
             ctx.setLineDash([]);
         }
-        
+
         function drawRubberBand() {
             if (bird.isDragging || !bird.isLaunched) {
                 ctx.strokeStyle = '#2c3e50';
@@ -371,16 +492,26 @@
                 ctx.stroke();
             }
         }
-        
+
         function resolveRound() {
             if (roundResolved) return;
             roundResolved = true;
+            turnState = 'settling';
 
             const remainingTargets = targets.filter(t => t.health > 0).length;
+            const level = getCurrentLevel();
+
             if (remainingTargets === 0) {
-                gameState = 'won';
-                setStatus('挑战成功', `你消灭了全部绿猪，最终得分 ${score} 分！点击“重新开始”可再次挑战。`);
+                screenState = 'levelClear';
                 bird.isLaunched = false;
+                const bonus = birdsLeft * 150;
+                totalScore += score + bonus;
+                document.getElementById('totalScore').textContent = totalScore;
+                setInstruction(`第 ${level.id} 关已完成，获得剩余小鸟奖励 ${bonus} 分。`);
+                setStatus('本关通过', `你完成了第 ${level.id} 关，关卡得分 ${score}，奖励 ${bonus}。正在进入下一关...`);
+                setTimeout(() => {
+                    loadNextLevel();
+                }, 1200);
                 return;
             }
 
@@ -388,12 +519,17 @@
             document.getElementById('birds').textContent = birdsLeft;
 
             if (birdsLeft > 0) {
-                setStatus('继续尝试', `还有 ${birdsLeft} 只小鸟，调整角度后继续发射。`);
-                resetBird();
+                turnState = 'spawnNext';
+                setInstruction(`第 ${level.id} 关仍在继续，下一只小鸟即将就位。`);
+                setStatus('继续尝试', `第 ${level.id} 关还剩 ${birdsLeft} 只小鸟，调整角度后继续发射。`);
+                setTimeout(() => {
+                    resetBird();
+                }, 700);
             } else {
-                gameState = 'lost';
-                setStatus('挑战失败', `小鸟已经用完，当前得分 ${score} 分。点击“重新开始”再试一次吧。`);
+                screenState = 'levelFail';
                 bird.isLaunched = false;
+                setInstruction(`第 ${level.id} 关挑战失败，你可以重试本关，或从第一关重新开始。`);
+                setStatus('本关失败', `第 ${level.id} 关挑战失败，当前关卡得分 ${score}。点击按钮继续挑战。`);
             }
         }
 
@@ -404,31 +540,33 @@
                 bird.vy += GRAVITY;
                 bird.x += bird.vx;
                 bird.y += bird.vy;
-                
+
                 if (bird.y + bird.radius > GROUND_Y) {
                     bird.y = GROUND_Y - bird.radius;
                     bird.vy *= -0.5;
                     bird.vx *= 0.8;
-                    
-                    if (Math.abs(bird.vy) < 1 && Math.abs(bird.vx) < 1) {
+
+                    if (Math.abs(bird.vy) < 1 && Math.abs(bird.vx) < 1 && turnState === 'flying') {
+                        turnState = 'settling';
                         setTimeout(() => {
                             resolveRound();
                         }, 500);
                     }
                 }
-                
+
                 if (bird.x > canvas.width || bird.x < 0 || bird.y < -100) {
+                    setInstruction('小鸟已飞出有效区域，本回合即将结算。');
                     setStatus('本次发射结束', '小鸟已经飞出有效区域，准备下一次发射。');
                     resolveRound();
                 }
-                
+
                 targets.forEach(target => {
                     if (target.health <= 0) return;
-                    
+
                     const dx = bird.x - target.x;
                     const dy = bird.y - target.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    
+
                     if (dist < bird.radius + target.radius) {
                         const speed = Math.sqrt(bird.vx * bird.vx + bird.vy * bird.vy);
                         if (speed > 3) {
@@ -437,22 +575,25 @@
                             document.getElementById('score').textContent = score;
                             createParticles(target.x, target.y, '#27ae60', 15);
                             updateTargetCount();
+                            setInstruction('直接命中目标成功，继续观察结构是否还会连锁坍塌。');
                             setStatus('命中目标', `成功消灭一只绿猪！当前得分 ${score} 分。`);
                         }
                     }
                 });
-                
+
                 blocks.forEach(block => {
                     if (block.health <= 0) return;
-                    
+
                     if (bird.x + bird.radius > block.x &&
                         bird.x - bird.radius < block.x + block.width &&
                         bird.y + bird.radius > block.y &&
                         bird.y - bird.radius < block.y + block.height) {
-                        
+
                         const speed = Math.sqrt(bird.vx * bird.vx + bird.vy * bird.vy);
                         if (speed > 5) {
                             block.health--;
+                            block.vx = bird.vx * 0.18;
+                            block.vy = Math.min(block.vy, -2.5);
                             bird.vx *= -0.5;
                             bird.vy *= -0.5;
                             createParticles(bird.x, bird.y, '#8B4513', 8);
@@ -463,8 +604,49 @@
                         }
                     }
                 });
+
+                blocks.forEach(block => {
+                    if (block.health <= 0) return;
+
+                    block.supported = isBlockSupported(block);
+                    if (!block.supported) {
+                        block.vy += GRAVITY * 0.9;
+                    } else {
+                        block.vy *= 0.5;
+                        if (block.y + block.height < GROUND_Y) {
+                            block.vy += GRAVITY * 0.15;
+                        }
+                    }
+
+                    block.x += block.vx;
+                    block.y += block.vy;
+                    block.vx *= 0.94;
+
+                    if (block.y + block.height >= GROUND_Y) {
+                        block.y = GROUND_Y - block.height;
+                        block.vy = 0;
+                    }
+
+                    targets.forEach(target => {
+                        if (target.health <= 0) return;
+                        const withinX = target.x + target.radius > block.x && target.x - target.radius < block.x + block.width;
+                        const withinY = target.y + target.radius > block.y && target.y - target.radius < block.y + block.height;
+                        if (withinX && withinY) {
+                            const impact = Math.abs(block.vx) + Math.abs(block.vy);
+                            if (impact > 2.8 || !block.supported) {
+                                target.health = 0;
+                                score += 120;
+                                document.getElementById('score').textContent = score;
+                                createParticles(target.x, target.y, '#2ecc71', 18);
+                                updateTargetCount();
+                                setInstruction('结构坍塌产生了连锁击破，这是更高效的过关方式。');
+                                setStatus('连锁击破', `落木击中了目标！当前得分 ${score} 分。`);
+                            }
+                        }
+                    });
+                });
             }
-            
+
             particles.forEach((p, i) => {
                 p.x += p.vx;
                 p.y += p.vy;
@@ -475,10 +657,10 @@
                 }
             });
         }
-        
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             skyGradient.addColorStop(0, '#87CEEB');
             skyGradient.addColorStop(0.65, '#BFE9FF');
@@ -502,12 +684,12 @@
 
             ctx.fillStyle = '#7CB342';
             ctx.fillRect(0, GROUND_Y, canvas.width, 50);
-            
+
             ctx.fillStyle = '#558B2F';
             for (let i = 0; i < canvas.width; i += 30) {
                 ctx.fillRect(i, GROUND_Y, 15, 50);
             }
-            
+
             drawSlingshot();
             drawRubberBand();
             drawBlocks();
@@ -515,83 +697,95 @@
             drawBird();
             drawParticles();
             drawTrajectory();
-            
+
+            const level = getCurrentLevel();
             ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
             ctx.font = 'bold 16px Arial';
-            ctx.fillText('拖动小鸟发射，优先瞄准结构薄弱处', 20, 30);
+            ctx.fillText(`第 ${level.id} 关：${level.name}`, 20, 30);
+            ctx.font = '14px Arial';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+            ctx.fillText(`总分 ${totalScore + score} · 剩余小鸟 ${birdsLeft} · 剩余目标 ${targets.filter(t => t.health > 0).length}`, 20, 52);
         }
-        
+
         function gameLoop() {
             update();
             draw();
             requestAnimationFrame(gameLoop);
         }
-        
+
         canvas.addEventListener('mousedown', (e) => {
-            if (bird.isLaunched || gameState === 'won' || gameState === 'lost') return;
-            
+            if (bird.isLaunched || screenState === 'levelClear' || screenState === 'levelFail' || screenState === 'gameClear') return;
+
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
-            
+
             const dx = mx - bird.x;
             const dy = my - bird.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            
+
             if (dist < bird.radius + 10) {
                 bird.isDragging = true;
-                gameState = 'dragging';
+                turnState = 'dragging';
                 setStatus('正在瞄准', '继续拖动即可调整角度与力度，松手发射。');
             }
         });
-        
+
         canvas.addEventListener('mousemove', (e) => {
             if (!bird.isDragging) return;
-            
+
             const rect = canvas.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
-            
-            const dx = mx - slingshot.x;
-            const dy = my - slingshot.y;
+
+            let dx = mx - slingshot.x;
+            let dy = my - slingshot.y;
+            if (dx > 35) dx = 35;
             const dist = Math.sqrt(dx * dx + dy * dy);
             const maxDist = 100;
-            
+
             if (dist > maxDist) {
                 bird.x = slingshot.x + (dx / dist) * maxDist;
                 bird.y = slingshot.y + (dy / dist) * maxDist;
             } else {
-                bird.x = mx;
-                bird.y = my;
+                bird.x = slingshot.x + dx;
+                bird.y = slingshot.y + dy;
             }
         });
-        
+
         canvas.addEventListener('mouseup', () => {
             if (!bird.isDragging) return;
-            
+
             bird.isDragging = false;
-            bird.isLaunched = true;
-            
+
             const dx = slingshot.x - bird.x;
             const dy = slingshot.y - bird.y;
-            const power = Math.sqrt(dx * dx + dy * dy) * 0.15;
+            const stretch = Math.sqrt(dx * dx + dy * dy);
+            if (stretch < 12) {
+                resetBird();
+                setStatus('发射取消', '拉弓距离太短，这次不计入发射。');
+                return;
+            }
+
+            bird.isLaunched = true;
+            const power = stretch * 0.15;
             const angle = Math.atan2(dy, dx);
-            
+
             bird.vx = Math.cos(angle) * power;
             bird.vy = Math.sin(angle) * power;
-            gameState = 'flying';
+            turnState = 'flying';
             setStatus('飞行中', '观察飞行轨迹和碰撞效果，等待这一轮结算。');
         });
-        
+
         canvas.addEventListener('mouseleave', () => {
             if (bird.isDragging) {
                 bird.isDragging = false;
                 resetBird();
             }
         });
-        
-        initGame();
-        setStatus('准备发射', '拖动红色小鸟，调整角度和力度后松手发射。');
+
+        initGame(0);
+        resetBird();
         gameLoop();
     </script>
 </body>
